@@ -1,0 +1,6 @@
+{
+    "FLAVOR": "prod",
+    "API_KEY": "abc123",
+    "GOOGLE_API_KEY": "xyz123",
+    "BASE_URL": "https://prod.api.com"
+}

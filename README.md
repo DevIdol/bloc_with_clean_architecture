@@ -15,3 +15,16 @@ fvm flutter pub get
 # to add package
 fvm flutter pub add package_name
 ```
+
+
+### Run-Dev
+
+```bash
+fvm flutter run --dart-define-from-file=config.dev.json
+```
+
+## to give execution permission for scripts
+
+```bash
+chmod 755 ios/scripts/retrieve_dart_defines.sh
+```

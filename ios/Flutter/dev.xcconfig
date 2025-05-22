@@ -1,0 +1,5 @@
+FLAVOR=dev
+APP_ID_SUFFIX=.dev
+API_KEY=abc123
+GOOGLE_API_KEY=xyz123
+BASE_URL=https://dev.api.com

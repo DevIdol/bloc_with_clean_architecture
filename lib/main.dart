@@ -9,12 +9,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const String flavor = String.fromEnvironment('FLAVOR', defaultValue: '');
+    final bool isProd = flavor == 'prod';
+    final String title = isProd ? 'My App' : 'My App - Dev';
+    final Color color = isProd ? Colors.blue : Colors.red;
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'BloC with Clean Architecture',
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: color)),
+      home: MyHomePage(title: title),
     );
   }
 }
