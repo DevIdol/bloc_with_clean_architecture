@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Dev",
+      "request": "launch",
+      "type": "dart",
+      //   "deviceId": "iPhone 16", OR "deviceId": "emulator-5554",
+      "program": "lib/main.dart",
+      "toolArgs": ["fvm", "flutter", "run"],
+      "args": ["--dart-define-from-file", "config.dev.json"],
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Run Prod",
+      "request": "launch",
+      "type": "dart",
+      //   "deviceId": "iPhone 16", OR "deviceId": "emulator-5554",
+      "program": "lib/main.dart",
+      "toolArgs": ["fvm", "flutter", "run"],
+      "args": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file",
+        "config.prod.json"
+      ],
+      "flutterMode": "release"
+    },
+    {
+      "name": "Run Unit Tests (Dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "./test/",
+      "toolArgs": ["fvm", "flutter", "test"],
+      "args": [
+        "--reporter",
+        "expanded",
+        "--dart-define-from-file",
+        "config.dev.json"
+      ]
+    },
+    {
+      "name": "Run Unit Tests (Prod)",
+      "request": "launch",
+      "type": "dart",
+      "program": "./test/",
+      "toolArgs": ["fvm", "flutter", "test"],
+      "args": [
+        "--reporter",
+        "expanded",
+        "--dart-define-from-file",
+        "config.prod.json"
+      ]
+    }
+  ]
+}

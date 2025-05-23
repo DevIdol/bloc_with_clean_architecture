@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Clean Project",
+      "type": "shell",
+      "command": "fvm flutter clean",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Pub Get",
+      "type": "shell",
+      "command": "fvm flutter pub get",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build Runner",
+      "type": "shell",
+      "command": "fvm dart run build_runner build --delete-conflicting-outputs",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Format Dart Code",
+      "type": "shell",
+      "command": "dart format --set-exit-if-changed .",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build iOS Dev",
+      "type": "shell",
+      "command": "fvm flutter build ios --dart-define-from-file=config.dev.json",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build iOS Prod",
+      "type": "shell",
+      "command": "fvm flutter build ios --dart-define-from-file=config.prod.json",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build APK Dev",
+      "type": "shell",
+      "command": "fvm flutter build apk --dart-define-from-file=config.dev.json",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build APK Prod",
+      "type": "shell",
+      "command": "fvm flutter build apk --dart-define-from-file=config.prod.json",
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}
