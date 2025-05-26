@@ -32,7 +32,7 @@ jobs:
         uses: kuhnroyal/flutter-fvm-config-action@v2
         id: fvm-config-action
         with:
-          path: ".fvmrc"
+          path: .fvmrc
 
       - name: Install Flutter SDK
         uses: subosito/flutter-action@v2
@@ -85,18 +85,13 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest] # Add macos-latest if you want to build for iOS
+        os: [ubuntu-latest]
         include:
           - os: ubuntu-latest
             platform: android
-            build-command: flutter build apk --dart-define-from-file=config.prod.json
+            build-command: flutter build apk --dart-define-from-file=config.prod.json --no-watch-fs --verbose
             artifact-path: build/app/outputs/flutter-apk/app-prod-release.apk
             artifact-name: android-apk
-          # - os: macos-latest
-          #   platform: ios
-          #   build-command: flutter build ios --dart-define-from-file=config.prod.json --export-options-plist=ios/ExportOptions.plist
-          #   artifact-path: build/ios/ipa/*.ipa
-          #   artifact-name: ios-ipa
 
     steps:
       - name: Checkout Code
@@ -111,7 +106,7 @@ jobs:
         uses: kuhnroyal/flutter-fvm-config-action@v2
         id: fvm-config-action
         with:
-          path: ".fvmrc"
+          path: .fvmrc
 
       - name: Install Flutter SDK
         uses: subosito/flutter-action@v2
@@ -131,8 +126,17 @@ jobs:
           key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
           restore-keys: pub-cache-
 
+      - name: Clean Build
+        run: flutter clean
+
       - name: Install Dependencies
         run: flutter pub get
+
+      - name: Verify Flavor Resources
+        run: ls -R src/${{ matrix.platform }}
+
+      - name: Check Disk Space
+        run: df -h
 
       - name: Setup Java for Android
         if: matrix.platform == 'android'
@@ -149,6 +153,12 @@ jobs:
             echo "Keystore file not created successfully"
             exit 1
           fi
+
+      - name: Verify Keystore
+        if: matrix.platform == 'android'
+        run: |
+          ls -l android/app/upload-keystore.jks
+          file android/app/upload-keystore.jks
 
       - name: Build for ${{ matrix.platform }}
         env:

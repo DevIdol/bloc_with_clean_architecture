@@ -9,12 +9,19 @@ import java.io.FileInputStream
 import java.util.Base64
 
 val dartEnvironmentVariables: Map<String, String> = run {
-    val dartDefines = project.properties["dart-defines"]?.toString()?.split(",")
     val map = mutableMapOf<String, String>()
+    // Default flavor to "prod" if not specified
+    map["FLAVOR"] = "prod"
+    val dartDefines = project.properties["dart-defines"]?.toString()?.split(",")
     dartDefines?.forEach { define ->
-        val keyValue = String(Base64.getDecoder().decode(define)).split("=")
-        if (keyValue.size == 2) {
-            map[keyValue[0]] = keyValue[1]
+        try {
+            val keyValue = String(Base64.getDecoder().decode(define)).split("=")
+            if (keyValue.size == 2) {
+                map[keyValue[0]] = keyValue[1]
+            }
+        } catch (e: Exception) {
+            // Log invalid dart-define but continue
+            println("Invalid dart-define: $define")
         }
     }
     map.toMap()
@@ -49,13 +56,15 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        if (dartEnvironmentVariables["FLAVOR"] != "prod") {
-            applicationIdSuffix = ".${dartEnvironmentVariables["FLAVOR"]}"
+        // Apply applicationIdSuffix only for non-prod flavors
+        val flavor = dartEnvironmentVariables["FLAVOR"] ?: "prod"
+        if (flavor != "prod") {
+            applicationIdSuffix = ".$flavor"
         }
         resValue(
             "string",
             "app_name",
-            "My App" + if (dartEnvironmentVariables["FLAVOR"] == "prod") "" else ".${dartEnvironmentVariables["FLAVOR"]}"
+            "My App" + if (flavor == "prod") "" else ".$flavor"
         )
     }
 
@@ -81,12 +90,14 @@ flutter {
 
 // Custom task for copying flavor-specific resources
 val copySources by tasks.registering(Copy::class) {
-    from("src/${dartEnvironmentVariables["FLAVOR"]}/res")
+    val flavor = dartEnvironmentVariables["FLAVOR"] ?: "prod"
+    from("src/$flavor/res")
     into("src/main/res")
+    // Only copy if source directory exists
+    onlyIf { file("src/$flavor/res").exists() }
 }
 
 tasks.whenTaskAdded {
-    dependsOn(copySources)
     if (name == "generateDebugResources" || name == "generateReleaseResources") {
         dependsOn(copySources)
     }
@@ -94,6 +105,9 @@ tasks.whenTaskAdded {
 
 // Copy flavor-specific google-services.json
 val selectGoogleServicesJson by tasks.registering(Copy::class) {
-    from("src/${dartEnvironmentVariables["FLAVOR"]}/google-services.json")
+    val flavor = dartEnvironmentVariables["FLAVOR"] ?: "prod"
+    from("src/$flavor/google-services.json")
     into("./")
+    // Only copy if google-services.json exists
+    onlyIf { file("src/$flavor/google-services.json").exists() }
 }
