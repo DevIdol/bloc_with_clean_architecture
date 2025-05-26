@@ -1,3 +1,4 @@
+```kotlin
 import java.util.Base64
 import java.util.Properties
 import java.io.FileInputStream
@@ -35,6 +36,14 @@ android {
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
+    }
+
+    flavorDimensions.add("default")
+    productFlavors {
+        create("prod") {
+            dimension = "default"
+            applicationIdSuffix = ".prod"
+        }
     }
 
     defaultConfig {
@@ -92,3 +101,4 @@ val selectGoogleServicesJson by tasks.registering(Copy::class) {
     from("src/${dartEnvironmentVariables["FLAVOR"]}/google-services.json")
     into("./")
 }
+```
