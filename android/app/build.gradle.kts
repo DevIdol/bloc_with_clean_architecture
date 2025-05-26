@@ -1,4 +1,3 @@
-```kotlin
 import java.util.Base64
 import java.util.Properties
 import java.io.FileInputStream
@@ -101,4 +100,3 @@ val selectGoogleServicesJson by tasks.registering(Copy::class) {
     from("src/${dartEnvironmentVariables["FLAVOR"]}/google-services.json")
     into("./")
 }
-```

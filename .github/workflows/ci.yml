@@ -89,12 +89,12 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: android
-            build-command: flutter build apk --flavor prod --dart-define-from-file=config.prod.json --release
+            build-command: flutter build apk --dart-define-from-file=config.prod.json
             artifact-path: build/app/outputs/flutter-apk/app-prod-release.apk
             artifact-name: android-apk
           # - os: macos-latest
           #   platform: ios
-          #   build-command: flutter build ios --flavor prod --dart-define-from-file=config.prod.json --release --export-options-plist=ios/ExportOptions.plist
+          #   build-command: flutter build ios --dart-define-from-file=config.prod.json --export-options-plist=ios/ExportOptions.plist
           #   artifact-path: build/ios/ipa/*.ipa
           #   artifact-name: ios-ipa
 
