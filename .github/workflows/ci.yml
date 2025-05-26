@@ -32,7 +32,7 @@ jobs:
         uses: kuhnroyal/flutter-fvm-config-action@v2
         id: fvm-config-action
         with:
-          path: .fvmrc
+          path: ".fvmrc"
 
       - name: Install Flutter SDK
         uses: subosito/flutter-action@v2
@@ -89,9 +89,14 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: android
-            build-command: flutter build apk --dart-define-from-file=config.prod.json --no-watch-fs --verbose
+            build-command: flutter build apk --dart-define-from-file=config.prod.json --stacktrace --verbose
             artifact-path: build/app/outputs/flutter-apk/app-prod-release.apk
             artifact-name: android-apk
+          # - os: macos-latest
+          #   platform: ios
+          #   build-command: flutter build ios --flavor prod --dart-define-from-file=config.prod.json --export-options-plist=ios/ExportOptions.plist
+          #   artifact-path: build/ios/ipa/*.ipa
+          #   artifact-name: ios-ipa
 
     steps:
       - name: Checkout Code
@@ -106,7 +111,7 @@ jobs:
         uses: kuhnroyal/flutter-fvm-config-action@v2
         id: fvm-config-action
         with:
-          path: .fvmrc
+          path: ".fvmrc"
 
       - name: Install Flutter SDK
         uses: subosito/flutter-action@v2
@@ -126,17 +131,27 @@ jobs:
           key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
           restore-keys: pub-cache-
 
-      - name: Clean Build
-        run: flutter clean
-
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Verify Flavor Resources
-        run: ls -R src/${{ matrix.platform }}
+        if: matrix.platform == 'android'
+        run: |
+          echo "Checking flavor resources in src/prod"
+          ls -R src/prod || true
+          if [ -d "src/prod/res" ]; then
+            echo "Resource directory src/prod/res exists"
+          else
+            echo "Warning: src/prod/res does not exist"
+          fi
+          if [ -f "src/prod/google-services.json" ]; then
+            echo "google-services.json exists in src/prod"
+          else
+            echo "Warning: src/prod/google-services.json does not exist"
+          fi
 
-      - name: Check Disk Space
-        run: df -h
+      - name: Clean Build
+        run: flutter clean
 
       - name: Setup Java for Android
         if: matrix.platform == 'android'
@@ -153,12 +168,6 @@ jobs:
             echo "Keystore file not created successfully"
             exit 1
           fi
-
-      - name: Verify Keystore
-        if: matrix.platform == 'android'
-        run: |
-          ls -l android/app/upload-keystore.jks
-          file android/app/upload-keystore.jks
 
       - name: Build for ${{ matrix.platform }}
         env:
