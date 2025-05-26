@@ -89,7 +89,7 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: android
-            build-command: flutter build apk --release --no-watch-fs --info --verbose
+            build-command: flutter build apk --dart-define-from-file=config.prod.json
             artifact-path: build/app/outputs/flutter-apk/app-prod-release.apk
             artifact-name: android-apk
 
