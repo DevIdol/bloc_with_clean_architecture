@@ -2,16 +2,10 @@ name: Flutter CI
 
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
-    branches:
-      - develop
-      - main
+    types: [opened, synchronize]
+    branches: [develop, main]
   push:
-    branches:
-      - develop
-      - main
+    branches: [develop, main]
 
 jobs:
   lint-and-test:
@@ -85,87 +79,67 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         include:
           - os: ubuntu-latest
             platform: android
-            build-command: flutter build apk --dart-define-from-file=config.prod.json
-            artifact-path: build/app/outputs/flutter-apk/app-prod-release.apk
-            artifact-name: android-apk
+          - os: macos-latest
+            platform: ios
 
     steps:
-      - name: Checkout Code
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Dart
+      - name: 🛠️ Setup Dart
         uses: dart-lang/setup-dart@v1
         with:
           sdk: stable
 
-      - name: Use FVM and Setup Flutter
+      - name: 🐦 Use FVM and Setup Flutter
         uses: kuhnroyal/flutter-fvm-config-action@v2
         id: fvm-config-action
         with:
           path: ".fvmrc"
 
-      - name: Install Flutter SDK
+      - name: 🌍 Install Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
-          channel: ${{ steps.fvm-config_action.outputs.FLUTTER_CHANNEL }}
+          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
           cache: true
           cache-key: flutter-${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
           cache-path: ${{ runner.tool_cache }}/flutter
 
-      - name: Cache Pub Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            **/pubspec.lock
-          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
-          restore-keys: pub-cache-
+      - name: ✅ Verify Flutter Installation
+        run: flutter --version
 
-      - name: Install Dependencies
+      - name: 📦 Install Dependencies
         run: flutter pub get
 
-      - name: Clean Build
+      - name: 🔐 Create config.dev.json from Secret
+        run: |
+          echo "${{ secrets.CONFIG_DEV_JSON }}" | base64 -d > config.dev.json
+
+      - name: 🧹 Clean Project
         run: flutter clean
 
-      - name: Setup Java for Android
-        if: matrix.platform == 'android'
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Keystore
-        if: matrix.platform == 'android'
-        run: |
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-          echo "storeFile=upload-keystore.jks" >> android/key.properties
-          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
-          if [ ! -f android/app/upload-keystore.jks ]; then
-            echo "Keystore file not created successfully"
-            exit 1
-          fi
-
-      - name: Build for ${{ matrix.platform }}
-        run: ${{ matrix.build-command }}
-
-      - name: Upload ${{ matrix.platform }} Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact-name }}
-          path: ${{ matrix.artifact-path }}
-          retention-days: 7
-
-      - name: Clean up Credentials
-        if: always()
+      - name: 🏭 Build for ${{ matrix.platform }}
         run: |
           if [ "${{ matrix.platform }}" == "android" ]; then
-            rm -f android/key.properties
-            rm -f android/app/upload-keystore.jks
+            flutter build apk --debug --dart-define-from-file=config.dev.json
+          elif [ "${{ matrix.platform }}" == "ios" ]; then
+            flutter build ios --debug --no-codesign --dart-define-from-file=config.dev.json
+            mkdir -p Payload
+            cp -r build/ios/iphonesimulator/*.app Payload/
+            zip -r debug.ipa Payload
           fi
+
+      - name: 📂 Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: mtmknowsync-${{ matrix.platform }}-build
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            debug.ipa
+          retention-days: 7

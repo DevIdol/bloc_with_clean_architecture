@@ -27,8 +27,6 @@ val keystoreProperties = Properties().apply {
     val keystorePropertiesFile = rootProject.file("key.properties")
     if (keystorePropertiesFile.exists()) {
         load(FileInputStream(keystorePropertiesFile))
-    } else {
-        println("Warning: key.properties not found, signing may fail")
     }
 }
 
@@ -73,10 +71,10 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String? ?: throw GradleException("keyAlias not set in key.properties")
-            keyPassword = keystoreProperties["keyPassword"] as String? ?: throw GradleException("keyPassword not set in key.properties")
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) } ?: throw GradleException("storeFile not set in key.properties")
-            storePassword = keystoreProperties["storePassword"] as String? ?: throw GradleException("storePassword not set in key.properties")
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String?
         }
     }
 
@@ -86,10 +84,8 @@ android {
         }
         release {
             signingConfig = signingConfigs.getByName("release")
-            // Minification is disabled to avoid R8 issues
-            // isMinifyEnabled = false
-            // shrinkResources = false
-            // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
