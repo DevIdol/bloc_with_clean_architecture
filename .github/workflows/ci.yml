@@ -85,7 +85,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest] # Add macos-latest if you want to build for iOS
         include:
           - os: ubuntu-latest
             platform: android
@@ -161,8 +161,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          artifact_key: ${{ matrix.build-artifact-key }}
-        with:
           path: ${{ matrix.artifact-path }}
           retention-days: 7
 
