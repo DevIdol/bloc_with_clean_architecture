@@ -1,0 +1,179 @@
+name: Flutter CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  lint-and-test:
+    name: Lint, Analyze & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Use FVM and Setup Flutter
+        uses: kuhnroyal/flutter-fvm-config-action@v2
+        id: fvm-config-action
+        with:
+          path: ".fvmrc"
+
+      - name: Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+          cache: true
+          cache-key: flutter-${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          cache-path: ${{ runner.tool_cache }}/flutter
+
+      - name: Verify Flutter Installation
+        run: flutter --version
+
+      - name: Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            **/pubspec.lock
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: pub-cache-
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Format Code
+        run: dart format --set-exit-if-changed .
+        continue-on-error: false
+
+      - name: Analyze Code
+        run: dart analyze --fatal-infos --fatal-warnings .
+        continue-on-error: false
+
+      - name: Run Unit Tests
+        run: flutter test --coverage
+        continue-on-error: false
+
+      - name: Upload Test Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
+
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    needs: lint-and-test # Lint & Test အောင်မြင်မှ build လုပ်မယ်
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest] # [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            platform: android
+            build-command: flutter build apk --dart-define-from-file=config.prod.json
+            artifact-path: build/app/outputs/flutter-apk/app-prod-release.apk
+            artifact-name: android-apk
+          # - os: macos-latest
+          #   platform: ios
+          #   build-command: flutter build ios --dart-define-from-file=config.prod.json --release --export-options-plist=ios/ExportOptions.plist
+          #   artifact-path: build/ios/ipa/*.ipa
+          #   artifact-name: ios-ipa
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Use FVM and Setup Flutter
+        uses: kuhnroyal/flutter-fvm-config-action@v2
+        id: fvm-config-action
+        with:
+          path: ".fvmrc"
+
+      - name: Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+          cache: true
+          cache-key: flutter-${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          cache-path: ${{ runner.tool_cache }}/flutter
+
+      - name: Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            **/pubspec.lock
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: pub-cache-
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Setup Java for Android
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Decode Keystore for Android
+        if: matrix.platform == 'android'
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+
+      # - name: Decode Provisioning Profile for iOS
+      #   if: matrix.platform == 'ios'
+      #   run: echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 -d > ios/Runner.mobileprovision
+
+      # - name: Decode Certificate for iOS
+      #   if: matrix.platform == 'ios'
+      #   run: echo "${{ secrets.IOS_CERTIFICATE_BASE64 }}" | base64 -d > ios/Runner.p12
+
+      - name: Build for ${{ matrix.platform }}
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+        run: ${{ matrix.build-command }}
+
+      - name: Upload ${{ matrix.platform }} Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
+          retention-days: 7
+
+      - name: Clean up Credentials
+        if: always()
+        run: |
+          if [ "${{ matrix.platform }}" == "android" ]; then
+            rm -f android/app/upload-keystore.jks
+          # elif [ "${{ matrix.platform }}" == "ios" ]; then
+          #   rm -f ios/Runner.mobileprovision
+          #   rm -f ios/Runner.p12
+          fi

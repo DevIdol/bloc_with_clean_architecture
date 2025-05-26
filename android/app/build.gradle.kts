@@ -1,3 +1,7 @@
+import java.util.Base64
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,7 +9,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-import java.util.Base64
+
 
 val dartEnvironmentVariables = mutableMapOf(
     "FLAVOR" to "prod"
@@ -20,6 +24,12 @@ if (project.hasProperty("dart-defines")) {
             dartEnvironmentVariables[pair[0]] = pair[1]
         }
     }
+}
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -61,11 +71,23 @@ android {
         // )
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) } ?: file("upload-keystore.jks")
+            storePassword = keystoreProperties["storePassword"] as String?
+        }
+    }
+
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+        debug {
             signingConfig = signingConfigs.getByName("debug")
+        }
+        release {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }

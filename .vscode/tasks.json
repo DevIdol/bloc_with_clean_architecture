@@ -12,6 +12,16 @@
       "problemMatcher": []
     },
     {
+      "label": "Widget Test",
+      "type": "shell",
+      "command": "fvm flutter test",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Pub Get",
       "type": "shell",
       "command": "fvm flutter pub get",
