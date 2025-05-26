@@ -89,7 +89,7 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: android
-            build-command: flutter build apk --dart-define-from-file=config.prod.json
+            build-command: flutter build apk --release --no-watch-fs --info --verbose
             artifact-path: build/app/outputs/flutter-apk/app-prod-release.apk
             artifact-name: android-apk
 
@@ -128,22 +128,6 @@ jobs:
 
       - name: Install Dependencies
         run: flutter pub get
-
-      - name: Verify Flavor Resources
-        if: matrix.platform == 'android'
-        run: |
-          echo "Checking flavor resources in src/prod"
-          ls -R src/prod || true
-          if [ -d "src/prod/res" ]; then
-            echo "Resource directory src/prod/res exists"
-          else
-            echo "Warning: src/prod/res does not exist"
-          fi
-          if [ -f "src/prod/google-services.json" ]; then
-            echo "google-services.json exists in src/prod"
-          else
-            echo "Warning: src/prod/google-services.json does not exist"
-          fi
 
       - name: Clean Build
         run: flutter clean

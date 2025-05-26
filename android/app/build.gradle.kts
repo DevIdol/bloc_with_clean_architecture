@@ -26,7 +26,7 @@ val dartEnvironmentVariables: Map<String, String> = run {
     map.toMap()
 }
 
-val keystoreProperties = Properties().apply {
+val keystoreProperties: Properties().apply {
     val keystorePropertiesFile = rootProject.file("key.properties")
     if (keystorePropertiesFile.exists()) {
         load(FileInputStream(keystorePropertiesFile))
@@ -101,6 +101,22 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Task to copy APK to Flutter-expected path
+val copyProdReleaseApk by tasks.registering(Copy::class) {
+    from("build/app/outputs/apk/prod/release/app-prod-release.apk")
+    into("build/app/outputs/flutter-apk")
+    rename { "app-prod-release.apk" }
+    onlyIf { file("build/app/outputs/apk/prod/release/app-prod-release.apk").exists() }
+}
+
+tasks.named("assembleProdRelease") {
+    finalizedBy(copyProdReleaseApk)
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
 }
 
 
