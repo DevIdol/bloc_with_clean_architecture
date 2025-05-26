@@ -14,21 +14,21 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout Code
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Dart
+      - name: 🛠️ Setup Dart
         uses: dart-lang/setup-dart@v1
         with:
           sdk: stable
 
-      - name: Use FVM and Setup Flutter
+      - name: 🐦 Use FVM and Setup Flutter
         uses: kuhnroyal/flutter-fvm-config-action@v2
         id: fvm-config-action
         with:
           path: ".fvmrc"
 
-      - name: Install Flutter SDK
+      - name: 🌍 Install Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
@@ -37,10 +37,10 @@ jobs:
           cache-key: flutter-${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
           cache-path: ${{ runner.tool_cache }}/flutter
 
-      - name: Verify Flutter Installation
+      - name: ✅ Verify Flutter Installation
         run: flutter --version
 
-      - name: Cache Pub Dependencies
+      - name: 📦 Cache Pub Dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -49,22 +49,25 @@ jobs:
           key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
           restore-keys: pub-cache-
 
-      - name: Install Dependencies
+      - name: 📥 Install Dependencies
         run: flutter pub get
 
-      - name: Format Code
+      - name: 🔐 Create config.dev.json from Secret
+        run: echo "${{ secrets.CONFIG_DEV_JSON }}" | base64 -d > config.dev.json
+
+      - name: 🧹 Format Code
         run: dart format --set-exit-if-changed .
         continue-on-error: false
 
-      - name: Analyze Code
+      - name: 🔍 Analyze Code
         run: dart analyze --fatal-infos --fatal-warnings .
         continue-on-error: false
 
-      - name: Run Unit Tests
+      - name: 🧪 Run Unit Tests
         run: flutter test --coverage
         continue-on-error: false
 
-      - name: Upload Test Coverage
+      - name: 📊 Upload Test Coverage
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -80,11 +83,12 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        include:
+        platform: [android, ios]
+        exclude:
           - os: ubuntu-latest
-            platform: android
-          - os: macos-latest
             platform: ios
+          - os: macos-latest
+            platform: android
 
     steps:
       - name: 📥 Checkout Code
@@ -113,12 +117,20 @@ jobs:
       - name: ✅ Verify Flutter Installation
         run: flutter --version
 
-      - name: 📦 Install Dependencies
+      - name: 📦 Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            **/pubspec.lock
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: pub-cache-
+
+      - name: 📥 Install Dependencies
         run: flutter pub get
 
       - name: 🔐 Create config.dev.json from Secret
-        run: |
-          echo "${{ secrets.CONFIG_DEV_JSON }}" | base64 -d > config.dev.json
+        run: echo "${{ secrets.CONFIG_DEV_JSON }}" | base64 -d > config.dev.json
 
       - name: 🧹 Clean Project
         run: flutter clean
@@ -130,7 +142,7 @@ jobs:
           elif [ "${{ matrix.platform }}" == "ios" ]; then
             flutter build ios --debug --no-codesign --dart-define-from-file=config.dev.json
             mkdir -p Payload
-            cp -r build/ios/iphonesimulator/*.app Payload/
+            cp -r build/ios/iphoneos/*.app Payload/
             zip -r debug.ipa Payload
           fi
 
@@ -140,6 +152,6 @@ jobs:
         with:
           name: mtmknowsync-${{ matrix.platform }}-build
           path: |
-            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/flutter-apk/app-prod-debug.apk
             debug.ipa
           retention-days: 7
