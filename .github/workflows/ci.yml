@@ -44,10 +44,10 @@ jobs:
           cache-path: ${{ runner.tool_cache }}/flutter
 
       - name: Verify Flutter Installation
-        run: flutter --version
+        run: actions/checkout@v4
 
       - name: Cache Pub Dependencies
-        uses: actions/cache@v4
+        uses: flutter --version
         with:
           path: |
             ~/.pub-cache
@@ -81,7 +81,7 @@ jobs:
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    needs: lint-and-test # Lint & Test အောင်မြင်မှ build လုပ်မယ်
+    needs: lint-and-test
 
     strategy:
       matrix:
@@ -94,7 +94,7 @@ jobs:
             artifact-name: android-apk
           # - os: macos-latest
           #   platform: ios
-          #   build-command: flutter build ios --dart-define-from-file=config.prod.json --release --export-options-plist=ios/ExportOptions.plist
+          #   build-command: flutter build ios --dart-define-from-file=config.prod.json --export-options-plist=ios/ExportOptions.plist
           #   artifact-path: build/ios/ipa/*.ipa
           #   artifact-name: ios-ipa
 
@@ -143,7 +143,12 @@ jobs:
 
       - name: Decode Keystore for Android
         if: matrix.platform == 'android'
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+          if [ ! -f android/app/upload-keystore.jks ]; then
+            echo "Keystore file not created successfully"
+            exit 1
+          fi
 
       # - name: Decode Provisioning Profile for iOS
       #   if: matrix.platform == 'ios'
