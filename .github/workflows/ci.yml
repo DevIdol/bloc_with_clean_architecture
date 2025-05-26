@@ -89,14 +89,9 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: android
-            build-command: flutter build apk --dart-define-from-file=config.prod.json --verbose
+            build-command: flutter build apk --flavor prod --dart-define-from-file=config.prod.json --release --no-watch-fs --stacktrace --info --verbose
             artifact-path: build/app/outputs/flutter-apk/app-prod-release.apk
             artifact-name: android-apk
-          # - os: macos-latest
-          #   platform: ios
-          #   build-command: flutter build ios --flavor prod --dart-define-from-file=config.prod.json --export-options-plist=ios/ExportOptions.plist
-          #   artifact-path: build/ios/ipa/*.ipa
-          #   artifact-name: ios-ipa
 
     steps:
       - name: Checkout Code
@@ -160,9 +155,13 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Decode Keystore for Android
+      - name: Setup Keystore
         if: matrix.platform == 'android'
         run: |
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "storeFile=upload-keystore.jks" >> android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
           if [ ! -f android/app/upload-keystore.jks ]; then
             echo "Keystore file not created successfully"
@@ -170,10 +169,6 @@ jobs:
           fi
 
       - name: Build for ${{ matrix.platform }}
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ${{ matrix.build-command }}
 
       - name: Upload ${{ matrix.platform }} Artifact
@@ -187,5 +182,6 @@ jobs:
         if: always()
         run: |
           if [ "${{ matrix.platform }}" == "android" ]; then
+            rm -f android/key.properties
             rm -f android/app/upload-keystore.jks
           fi

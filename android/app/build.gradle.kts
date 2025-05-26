@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    id("com.google.gms.google-services")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -9,25 +10,40 @@ import java.io.FileInputStream
 import java.util.Base64
 
 val dartEnvironmentVariables: Map<String, String> = run {
-    val dartDefines = project.properties["dart-defines"]?.toString()?.split(",")
     val map = mutableMapOf<String, String>()
+    // Default flavor to "prod" if not specified
+    map["FLAVOR"] = "prod"
+    val dartDefines = project.properties["dart-defines"]?.toString()?.split(",")
     dartDefines?.forEach { define ->
-        val keyValue = String(Base64.getDecoder().decode(define)).split("=")
-        if (keyValue.size == 2) {
-            map[keyValue[0]] = keyValue[1]
+        try {
+            val keyValue = String(Base64.getDecoder().decode(define)).split("=")
+            if (keyValue.size == 2) {
+                map[keyValue[0]] = keyValue[1]
+            }
+        } catch (e: Exception) {
+            println("Invalid dart-define: $define")
         }
     }
     map.toMap()
 }
 
+val keystoreProperties = Properties().apply {
+    val keystorePropertiesFile = rootProject.file("key.properties")
+    if (keystorePropertiesFile.exists()) {
+        load(FileInputStream(keystorePropertiesFile))
+    } else {
+        println("Warning: key.properties not found, signing may fail")
+    }
+}
+
 android {
-    namespace = "com.example.clean_architecture_with_bloc"
+    namespace = "com.mtm.mtmknowsync"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -38,7 +54,7 @@ android {
     productFlavors {
         create("prod") {
             dimension = "default"
-            applicationIdSuffix = ".prod"
+            applicationIdSuffix = dartEnvironmentVariables["APP_SUFFIX"] ?: ".prod"
         }
     }
 
@@ -49,30 +65,37 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Apply applicationIdSuffix only for non-prod flavors
-        val flavor = dartEnvironmentVariables["FLAVOR"] ?: "prod"
-        if (flavor != "prod") {
-            applicationIdSuffix = ".$flavor"
+        // Apply applicationIdSuffix from dartEnvironmentVariables
+        val appSuffix = dartEnvironmentVariables["APP_SUFFIX"] ?: ""
+        if (appSuffix.isNotEmpty()) {
+            applicationIdSuffix = appSuffix
         }
         resValue(
             "string",
             "app_name",
-            "My App" + if (flavor == "prod") "" else ".$flavor"
+            dartEnvironmentVariables["APP_NAME"] ?: "MTMKnowSync"
         )
     }
 
     signingConfigs {
         create("release") {
-            keyAlias = System.getenv("KEY_ALIAS") ?: throw GradleException("KEY_ALIAS is not set")
-            keyPassword = System.getenv("KEY_PASSWORD") ?: throw GradleException("KEY_PASSWORD is not set")
-            storeFile = file("upload-keystore.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: throw GradleException("KEYSTORE_PASSWORD is not set")
+            keyAlias = keystoreProperties["keyAlias"] as String? ?: throw GradleException("keyAlias not set in key.properties")
+            keyPassword = keystoreProperties["keyPassword"] as String? ?: throw GradleException("keyPassword not set in key.properties")
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) } ?: throw GradleException("storeFile not set in key.properties")
+            storePassword = keystoreProperties["storePassword"] as String? ?: throw GradleException("storePassword not set in key.properties")
         }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             signingConfig = signingConfigs.getByName("release")
+            // Disable minification to avoid R8 issues
+            // isMinifyEnabled = false
+            // shrinkResources = false
+            // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
@@ -81,26 +104,22 @@ flutter {
     source = "../.."
 }
 
-// Custom task for copying flavor-specific resources
-val copySources by tasks.registering(Copy::class) {
-    val flavor = dartEnvironmentVariables["FLAVOR"] ?: "prod"
-    from("src/$flavor/res")
-    into("src/main/res")
-    // Only copy if source directory exists
-    onlyIf { file("src/$flavor/res").exists() }
-}
 
-tasks.whenTaskAdded {
-    if (name == "generateDebugResources" || name == "generateReleaseResources") {
-        dependsOn(copySources)
-    }
-}
+// Custom task for copying flavor-specific resources
+// val copySources by tasks.registering(Copy::class) {
+//     from("src/${dartEnvironmentVariables["FLAVOR"]}/res")
+//     into("src/main/res")
+// }
+
+// tasks.whenTaskAdded {
+//     dependsOn(copySources)
+//     if (name == "generateDebugResources" || name == "generateReleaseResources") {
+//         dependsOn(copySources)
+//     }
+// }
 
 // Copy flavor-specific google-services.json
-val selectGoogleServicesJson by tasks.registering(Copy::class) {
-    val flavor = dartEnvironmentVariables["FLAVOR"] ?: "prod"
-    from("src/$flavor/google-services.json")
-    into("./")
-    // Only copy if google-services.json exists
-    onlyIf { file("src/$flavor/google-services.json").exists() }
-}
+// val selectGoogleServicesJson by tasks.registering(Copy::class) {
+//     from("src/${dartEnvironmentVariables["FLAVOR"]}/google-services.json")
+//     into("./")
+// }
