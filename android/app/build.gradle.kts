@@ -9,19 +9,12 @@ import java.io.FileInputStream
 import java.util.Base64
 
 val dartEnvironmentVariables: Map<String, String> = run {
-    val map = mutableMapOf<String, String>()
-    // Default flavor to "prod" if not specified
-    map["FLAVOR"] = "prod"
     val dartDefines = project.properties["dart-defines"]?.toString()?.split(",")
+    val map = mutableMapOf<String, String>()
     dartDefines?.forEach { define ->
-        try {
-            val keyValue = String(Base64.getDecoder().decode(define)).split("=")
-            if (keyValue.size == 2) {
-                map[keyValue[0]] = keyValue[1]
-            }
-        } catch (e: Exception) {
-            // Log invalid dart-define but continue
-            println("Invalid dart-define: $define")
+        val keyValue = String(Base64.getDecoder().decode(define)).split("=")
+        if (keyValue.size == 2) {
+            map[keyValue[0]] = keyValue[1]
         }
     }
     map.toMap()
