@@ -1,26 +1,23 @@
-import java.util.Base64
-import java.util.Properties
-import java.io.FileInputStream
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-val dartEnvironmentVariables = mutableMapOf(
-    "FLAVOR" to "prod"
-)
+import java.util.Properties
+import java.io.FileInputStream
+import java.util.Base64
 
-if (project.hasProperty("dart-defines")) {
-    val dartDefines = project.property("dart-defines") as String
-    dartDefines.split(",").forEach { entry ->
-        val decoded = String(Base64.getDecoder().decode(entry), Charsets.UTF_8)
-        val pair = decoded.split("=")
-        if (pair.size == 2) {
-            dartEnvironmentVariables[pair[0]] = pair[1]
+val dartEnvironmentVariables: Map<String, String> = run {
+    val dartDefines = project.properties["dart-defines"]?.toString()?.split(",")
+    val map = mutableMapOf<String, String>()
+    dartDefines?.forEach { define ->
+        val keyValue = String(Base64.getDecoder().decode(define)).split("=")
+        if (keyValue.size == 2) {
+            map[keyValue[0]] = keyValue[1]
         }
     }
+    map.toMap()
 }
 
 android {
