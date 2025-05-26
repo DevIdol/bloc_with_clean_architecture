@@ -112,7 +112,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
-          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+          channel: ${{ steps.fvm-config_action.outputs.FLUTTER_CHANNEL }}
           cache: true
           cache-key: flutter-${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
           cache-path: ${{ runner.tool_cache }}/flutter

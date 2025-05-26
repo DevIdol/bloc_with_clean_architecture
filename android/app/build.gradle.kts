@@ -8,25 +8,22 @@ import java.util.Properties
 import java.io.FileInputStream
 import java.util.Base64
 
-val dartEnvironmentVariables: Map<String, String> = run {
-    val map = mutableMapOf<String, String>()
-    // Default flavor to "prod" if not specified
-    map["FLAVOR"] = "prod"
-    val dartDefines = project.properties["dart-defines"]?.toString()?.split(",")
-    dartDefines?.forEach { define ->
-        try {
-            val keyValue = String(Base64.getDecoder().decode(define)).split("=")
-            if (keyValue.size == 2) {
-                map[keyValue[0]] = keyValue[1]
-            }
-        } catch (e: Exception) {
-            println("Invalid dart-define: $define")
+val dartEnvironmentVariables = mutableMapOf(
+    "FLAVOR" to "prod"
+)
+
+if (project.hasProperty("dart-defines")) {
+    val dartDefines = project.property("dart-defines") as String
+    dartDefines.split(",").forEach { entry ->
+        val decoded = String(Base64.getDecoder().decode(entry), Charsets.UTF_8)
+        val pair = decoded.split("=")
+        if (pair.size == 2) {
+            dartEnvironmentVariables[pair[0]] = pair[1]
         }
     }
-    map.toMap()
 }
 
-val keystoreProperties: Properties().apply {
+val keystoreProperties = Properties().apply {
     val keystorePropertiesFile = rootProject.file("key.properties")
     if (keystorePropertiesFile.exists()) {
         load(FileInputStream(keystorePropertiesFile))
@@ -36,44 +33,42 @@ val keystoreProperties: Properties().apply {
 }
 
 android {
-    namespace = "com.mtm.mtmknowsync"
+    namespace = "com.example.clean_architecture_with_bloc"
     compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
-    flavorDimensions.add("default")
-    productFlavors {
-        create("prod") {
-            dimension = "default"
-            applicationIdSuffix = dartEnvironmentVariables["APP_SUFFIX"] ?: ".prod"
-        }
-    }
-
     defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.clean_architecture_with_bloc"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Apply applicationIdSuffix from dartEnvironmentVariables
-        val appSuffix = dartEnvironmentVariables["APP_SUFFIX"] ?: ""
-        if (appSuffix.isNotEmpty()) {
-            applicationIdSuffix = appSuffix
+        if (dartEnvironmentVariables["FLAVOR"] != "prod") {
+            applicationIdSuffix = ".${dartEnvironmentVariables["FLAVOR"]}"
         }
         resValue(
             "string",
             "app_name",
-            dartEnvironmentVariables["APP_NAME"] ?: "MTMKnowSync"
+            "My App" + if (dartEnvironmentVariables["FLAVOR"] == "prod") "" else ".${dartEnvironmentVariables["FLAVOR"]}"
         )
+        // resValue(
+        //     "string",
+        //     "GOOGLE_API_KEY",
+        //     dartEnvironmentVariables["GOOGLE_API_KEY"] ?: "default_value"
+        // )
     }
 
     signingConfigs {
@@ -91,7 +86,7 @@ android {
         }
         release {
             signingConfig = signingConfigs.getByName("release")
-            // Disable minification to avoid R8 issues
+            // Minification is disabled to avoid R8 issues
             // isMinifyEnabled = false
             // shrinkResources = false
             // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -133,7 +128,7 @@ dependencies {
 //     }
 // }
 
-// Copy flavor-specific google-services.json
+// // Copy flavor-specific google-services.json
 // val selectGoogleServicesJson by tasks.registering(Copy::class) {
 //     from("src/${dartEnvironmentVariables["FLAVOR"]}/google-services.json")
 //     into("./")
