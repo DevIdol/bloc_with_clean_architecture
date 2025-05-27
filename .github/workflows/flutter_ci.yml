@@ -1,0 +1,153 @@
+name: 🚀 Flutter CI
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [develop]
+  push:
+    branches: [develop]
+
+jobs:
+  lint-and-test:
+    name: 🧹 Lint, Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: 🐦 Use FVM and Setup Flutter
+        uses: kuhnroyal/flutter-fvm-config-action@v2
+        id: fvm-config-action
+        with:
+          path: ".fvmrc"
+
+      - name: 🌍 Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+          cache: true
+          cache-key: flutter-${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          cache-path: ${{ runner.tool_cache }}/flutter
+
+      - name: 📦 Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            **/pubspec.lock
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: pub-cache-
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: ✂️ Format Code
+        run: dart format --set-exit-if-changed .
+        continue-on-error: false
+
+      - name: 🔍 Analyze Code
+        run: dart analyze --fatal-infos --fatal-warnings .
+        continue-on-error: false
+
+      - name: 🧪 Run Tests
+        run: flutter test --coverage
+
+      - name: 📊 Upload Test Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+
+  build:
+    name: 🏗️ Build ${{ matrix.platform }}
+    needs: lint-and-test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest] # Add macos-latest, windows-latest as needed
+        include:
+          - os: ubuntu-latest
+            platform: android
+          # - os: macos-latest
+          #   platform: ios
+          # - os: windows-latest
+          #   platform: windows
+          # - os: macos-latest
+          #   platform: macos
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: 🐦 Use FVM and Setup Flutter
+        uses: kuhnroyal/flutter-fvm-config-action@v2
+        id: fvm-config-action
+        with:
+          path: ".fvmrc"
+
+      - name: 🌍 Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+          cache: true
+          cache-key: flutter-${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          cache-path: ${{ runner.tool_cache }}/flutter
+
+      - name: 📦 Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            **/pubspec.lock
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: pub-cache-
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: 🔐 Create config.dev.json from Secret
+        run: echo "${{ secrets.CONFIG_DEV_JSON }}" | base64 -d > config.dev.json
+
+      - name: 🧹 Clean Project
+        run: flutter clean
+
+      - name: 🏭 Build for ${{ matrix.platform }}
+        run: |
+          if [ "${{ matrix.platform }}" == "android" ]; then
+            flutter build apk --debug --dart-define-from-file=config.dev.json
+          # elif [ "${{ matrix.platform }}" == "ios" ]; then
+          #   flutter build ios --no-codesign --dart-define-from-file=config.dev.json
+          # elif [ "${{ matrix.platform }}" == "windows" ]; then
+          #   flutter build windows --dart-define-from-file=config.dev.json
+          # elif [ "${{ matrix.platform }}" == "macos" ]; then
+          #   flutter build macos --dart-define-from-file=config.dev.json
+          fi
+
+      - name: 📂 Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: my-app-${{ matrix.platform }}-build
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            # build/ios/iphoneos/*.app
+            # build/windows/runner/Release/*.exe
+            # build/macos/Build/Products/Release/*.app
+          retention-days: 7
+
+      - name: 🧹 Clean up config.dev.json
+        if: always()
+        run: rm -f config.dev.json
