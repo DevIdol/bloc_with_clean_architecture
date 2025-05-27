@@ -1,0 +1,119 @@
+name: 📦 Flutter Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+jobs:
+  release:
+    name: 🚀 Release ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: android
+          - os: macos-latest
+            platform: ios
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: 🐦 Use FVM and Setup Flutter
+        uses: kuhnroyal/flutter-fvm-config-action@v2
+        id: fvm-config-action
+        with:
+          path: ".fvmrc"
+
+      - name: 🌍 Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+          cache: true
+          cache-key: flutter-${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          cache-path: ${{ runner.tool_cache }}/flutter
+
+      - name: 📦 Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            **/pubspec.lock
+          key: pub-cache-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: pub-cache-
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: 🔐 Create config.prod.json from Secret
+        run: echo "${{ secrets.CONFIG_PROD_JSON }}" | base64 -d > config.prod.json
+
+      - name: 🧹 Clean Project
+        run: flutter clean
+
+      - name: 🏭 Build for ${{ matrix.platform }}
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ "${{ matrix.platform }}" == "android" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
+            flutter build appbundle --release --dart-define-from-file=config.prod.json
+          elif [ "${{ matrix.platform }}" == "ios" ]; then
+            flutter build ios --release --no-codesign --dart-define-from-file=config.prod.json
+          fi
+
+      - name: 📂 Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: my-app-${{ matrix.platform }}-release
+          path: |
+            build/app/outputs/bundle/release/*.aab
+            build/ios/iphoneos/*.app
+          retention-days: 7
+
+      - name: 🚀 Deploy to Google Play Store
+        if: matrix.platform == 'android'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          packageName: com.myapp.mtm
+          releaseFiles: build/app/outputs/bundle/release/*.aab
+          track: internal
+          status: completed
+
+      - name: 🚀 Deploy to App Store
+        if: matrix.platform == 'ios'
+        run: |
+          # Placeholder for iOS deployment (Fastlane recommended)
+          echo "iOS deployment requires Fastlane or manual App Store Connect upload"
+        # Fastlane setup example (uncomment if using Fastlane):
+        # - name: 🛠️ Setup Fastlane
+        #   run: |
+        #     gem install fastlane
+        #     cd ios
+        #     fastlane init
+        # - name: 🚀 Deploy to App Store
+        #   run: |
+        #     cd ios
+        #     fastlane release
+        #   env:
+        #     APPLE_ID: ${{ secrets.APPLE_ID }}
+        #     APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+
+      - name: 🧹 Clean up config.prod.json and Keystore
+        if: always()
+        run: |
+          rm -f config.prod.json
+          rm -f android/app/keystore.jks

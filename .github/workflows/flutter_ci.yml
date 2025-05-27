@@ -71,12 +71,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest] # Add macos-latest, windows-latest as needed
+        os: [ubuntu-latest, macos-latest] # Add windows-latest as needed
         include:
           - os: ubuntu-latest
             platform: android
-          # - os: macos-latest
-          #   platform: ios
+          - os: macos-latest
+            platform: ios
           # - os: windows-latest
           #   platform: windows
           # - os: macos-latest
@@ -128,12 +128,8 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" == "android" ]; then
             flutter build apk --debug --dart-define-from-file=config.dev.json
-          # elif [ "${{ matrix.platform }}" == "ios" ]; then
-          #   flutter build ios --no-codesign --dart-define-from-file=config.dev.json
-          # elif [ "${{ matrix.platform }}" == "windows" ]; then
-          #   flutter build windows --dart-define-from-file=config.dev.json
-          # elif [ "${{ matrix.platform }}" == "macos" ]; then
-          #   flutter build macos --dart-define-from-file=config.dev.json
+          elif [ "${{ matrix.platform }}" == "ios" ]; then
+            flutter build ios --no-codesign --debug --dart-define-from-file=config.dev.json
           fi
 
       - name: 📂 Upload Artifacts
@@ -143,9 +139,7 @@ jobs:
           name: my-app-${{ matrix.platform }}-build
           path: |
             build/app/outputs/flutter-apk/*.apk
-            # build/ios/iphoneos/*.app
-            # build/windows/runner/Release/*.exe
-            # build/macos/Build/Products/Release/*.app
+            build/ios/iphoneos/*.app
           retention-days: 7
 
       - name: 🧹 Clean up config.dev.json
