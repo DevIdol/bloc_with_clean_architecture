@@ -124,12 +124,19 @@ jobs:
       - name: 🧹 Clean Project
         run: flutter clean
 
+      - name: 🛠️ Setup Xcode (iOS only)
+        if: matrix.platform == 'ios'
+        run: |
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+          sudo xcodebuild -runFirstLaunch
+          xcodebuild -version
+
       - name: 🏭 Build for ${{ matrix.platform }}
         run: |
           if [ "${{ matrix.platform }}" == "android" ]; then
-            flutter build apk --debug --dart-define-from-file=config.dev.json
+            flutter build apk --debug --dart-define-from-file=config.dev.json --verbose
           elif [ "${{ matrix.platform }}" == "ios" ]; then
-            flutter build ios --no-codesign --debug --dart-define-from-file=config.dev.json
+            flutter build ios --no-codesign --debug --dart-define-from-file=config.dev.json --verbose
           fi
 
       - name: 📂 Upload Artifacts
