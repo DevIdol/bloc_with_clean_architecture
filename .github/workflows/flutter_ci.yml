@@ -121,15 +121,24 @@ jobs:
       - name: 🔐 Create config.dev.json from Secret
         run: echo "${{ secrets.CONFIG_DEV_JSON }}" | base64 -d > config.dev.json
 
+      - name: 🔐 Set Execute Permission for iOS Script
+        if: matrix.platform == 'ios'
+        run: |
+          if [ -f ios/scripts/retrieve_dart_defines.sh ]; then
+            chmod +x ios/scripts/retrieve_dart_defines.sh
+            echo "Set executable permission for ios/scripts/retrieve_dart_defines.sh"
+          else
+            echo "ios/scripts/retrieve_dart_defines.sh not found, skipping permission change"
+          fi
       - name: 🧹 Clean Project
         run: flutter clean
 
-      - name: 🛠️ Setup Xcode (iOS only)
-        if: matrix.platform == 'ios'
-        run: |
-          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
-          sudo xcodebuild -runFirstLaunch
-          xcodebuild -version
+      # - name: 🛠️ Setup Xcode (iOS only)
+      #   if: matrix.platform == 'ios'
+      #   run: |
+      #     sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+      #     sudo xcodebuild -runFirstLaunch
+      #     xcodebuild -version
 
       - name: 🏭 Build for ${{ matrix.platform }}
         run: |
