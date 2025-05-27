@@ -1,4 +1,4 @@
-package com.example.clean_architecture_with_bloc
+package com.myapp.mtm
 
 import io.flutter.embedding.android.FlutterActivity
 
